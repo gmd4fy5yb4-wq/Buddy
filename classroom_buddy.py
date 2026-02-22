@@ -26,7 +26,7 @@ tft = ST7789(
     height=240,
     rotation=0,
     port=0,
-    cs=8,       # CE0 - GPIO 8
+    cs=0,       # CE0 (spidev0.0)
     dc=25,      # Data/Command - GPIO 25
     backlight=None
 )
