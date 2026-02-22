@@ -27,7 +27,7 @@ tft = ST7789(
     rotation=0,
     port=0,
     cs=0,       # CE0 (spidev0.0)
-    dc=25,      # Data/Command - GPIO 25
+    dc=24,      # Data/Command - GPIO 24
     backlight=None
 )
 font = ImageFont.load_default()
