@@ -465,15 +465,22 @@ def tft_write_lines(lines, color='white', bg='black'):
 
 def record_audio(duration=5, sample_rate=16000):
     print(f"Recording for {duration} seconds...")
+    # I2S mic requires 48kHz stereo, audio on right channel (L/R tied to 3.3V)
+    rec_rate = 48000
     audio = sd.rec(
-        int(duration * sample_rate),
-        samplerate=sample_rate,
-        channels=1,
-        dtype='int16',
+        int(duration * rec_rate),
+        samplerate=rec_rate,
+        channels=2,
+        dtype='int32',
         device=0  # I2S mic (card 0)
     )
     sd.wait()
-    return audio, sample_rate
+    # Extract right channel and downsample 48kHz -> 16kHz (factor of 3)
+    right = audio[:, 1]
+    downsampled = right[::3]
+    # Convert int32 to int16
+    mono_16 = (downsampled >> 16).astype('int16')
+    return mono_16.reshape(-1, 1), sample_rate
 
 
 # Main Loop
