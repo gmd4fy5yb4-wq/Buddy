@@ -470,7 +470,7 @@ def record_audio(duration=5, sample_rate=16000):
         samplerate=sample_rate,
         channels=1,
         dtype='int16',
-        device='plughw:0,0'  # I2S mic (card 0, device 0)
+        device=0  # I2S mic (card 0)
     )
     sd.wait()
     return audio, sample_rate
