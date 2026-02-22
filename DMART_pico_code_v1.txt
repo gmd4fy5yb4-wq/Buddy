@@ -1,0 +1,375 @@
+import board, busio, time
+import digitalio
+import sdcardio, storage
+import audiobusio, audiocore
+
+# =========================================================
+# SETTINGS
+# =========================================================
+LCD_COLS = 20
+LCD_ROWS = 2
+I2C_ADDR = 0x27
+
+SOUNDS_DIR = "/sd/Sounds"        # case-sensitive
+SLEEP_AFTER_S = 300              # 5 minutes
+SLEEP_MESSAGE_S = 2.0            # show "Sleeping..." then blank
+
+COOLDOWN_S = 1.0                 # touch cooldown
+RELEASE_REQUIRED = True          # must release before retrigger
+
+# =========================================================
+# LCD (PCF8574 backpack)
+# SDA=GP0, SCL=GP1
+# Flicker fix: only redraw when text changes
+# =========================================================
+i2c = busio.I2C(scl=board.GP1, sda=board.GP0, frequency=50000)
+
+ENABLE = 0x04
+RS = 0x01
+_backlight_on = True
+
+_last_lcd_1 = None
+_last_lcd_2 = None
+
+def lcd_reset():
+    global _last_lcd_1, _last_lcd_2
+    _last_lcd_1 = None
+    _last_lcd_2 = None
+    lcd_init()
+    lcd_clear()
+
+def lcd_backlight(on: bool):
+    global _backlight_on
+    _backlight_on = bool(on)
+
+def _i2c_write(byte_val):
+    while not i2c.try_lock():
+        pass
+    try:
+        i2c.writeto(I2C_ADDR, bytes([byte_val]))
+    finally:
+        i2c.unlock()
+
+def _write_byte(b):
+    bl = 0x08 if _backlight_on else 0x00
+    _i2c_write(b | bl)
+
+def _pulse_enable(b):
+    _write_byte(b | ENABLE)
+    time.sleep(0.0005)
+    _write_byte(b & ~ENABLE)
+    time.sleep(0.0001)
+
+def _lcd_write_nibble(nibble, mode=0):
+    b = (nibble & 0xF0) | mode
+    _write_byte(b)
+    _pulse_enable(b)
+
+def lcd_cmd(cmd):
+    _lcd_write_nibble(cmd & 0xF0, 0)
+    _lcd_write_nibble((cmd << 4) & 0xF0, 0)
+
+def lcd_data(data):
+    _lcd_write_nibble(data & 0xF0, RS)
+    _lcd_write_nibble((data << 4) & 0xF0, RS)
+
+def lcd_init():
+    time.sleep(0.05)
+    _lcd_write_nibble(0x30)
+    time.sleep(0.005)
+    _lcd_write_nibble(0x30)
+    time.sleep(0.001)
+    _lcd_write_nibble(0x20)
+
+    lcd_cmd(0x28)  # 2-line, 5x8
+    lcd_cmd(0x0C)  # display on
+    lcd_cmd(0x06)  # entry mode
+    lcd_cmd(0x01)  # clear
+    time.sleep(0.005)
+
+def lcd_clear():
+    lcd_cmd(0x01)
+    time.sleep(0.005)
+
+def lcd_set_cursor(row, col):
+    addr = 0x80 + col if row == 0 else 0xC0 + col
+    lcd_cmd(addr)
+
+def lcd_print(s):
+    for ch in s:
+        lcd_data(ord(ch))
+
+def _fit_line(s, width, center=False):
+    s = "" if s is None else str(s)
+    if len(s) > width:
+        return s[:width]
+    if center:
+        pad_total = width - len(s)
+        left = pad_total // 2
+        right = pad_total - left
+        return (" " * left) + s + (" " * right)
+    return s + (" " * (width - len(s)))
+
+def lcd_show(line1="", line2="", center=False):
+    # Flicker fix: do nothing unless content changes
+    global _last_lcd_1, _last_lcd_2
+    l1 = _fit_line(line1, LCD_COLS, center=center)
+    l2 = _fit_line(line2, LCD_COLS, center=center)
+
+    if l1 == _last_lcd_1 and l2 == _last_lcd_2:
+        return
+
+    _last_lcd_1, _last_lcd_2 = l1, l2
+
+    lcd_clear()
+    lcd_set_cursor(0, 0); lcd_print(l1)
+    lcd_set_cursor(1, 0); lcd_print(l2)
+
+def _scroll_frames(s, width):
+    s = "" if s is None else str(s)
+    if len(s) <= width:
+        return [s]
+    gap = "   "
+    scroll = s + gap
+    frames = []
+    for i in range(len(scroll)):
+        window = (scroll + scroll)[i:i+width]
+        frames.append(window)
+    return frames
+
+def lcd_show_scroll(line1="", line2="", center=False, step_s=0.18, hold_s=1.0, loops=2):
+    f1 = _scroll_frames(line1, LCD_COLS)
+    f2 = _scroll_frames(line2, LCD_COLS)
+
+    if len(f1) == 1 and len(f2) == 1:
+        lcd_show(line1, line2, center=center)
+        time.sleep(hold_s)
+        return
+
+    max_len = max(len(f1), len(f2))
+    for _ in range(loops):
+        for i in range(max_len):
+            a = f1[i % len(f1)] if len(f1) > 1 else _fit_line(f1[0], LCD_COLS, center=center)
+            b = f2[i % len(f2)] if len(f2) > 1 else _fit_line(f2[0], LCD_COLS, center=center)
+            # frames are already width-sized; center=False
+            lcd_show(a, b, center=False)
+            time.sleep(step_s)
+    time.sleep(0.25)
+
+def lcd_boot():
+    lcd_show_scroll("Hi. I'm DMART.", "Press start or I/O to begin", center=False, hold_s=1.2, loops=1)
+
+def lcd_idle_armed():
+    lcd_show("DMART is ready", "Touch a panel", center=True)
+
+def lcd_idle_disarmed():
+    lcd_show("DMART is ready", "Press Start", center=True)
+
+def lcd_playing(label):
+    lcd_show("Playing...", label, center=False)
+
+def lcd_missing(name):
+    lcd_show("Missing file", name, center=False)
+
+def lcd_sleeping():
+    lcd_show("Sleeping...", "Press Start", center=True)
+
+# =========================================================
+# AMP ENABLE (MAX98357A SD pins tied together -> GP22)
+# =========================================================
+amp_en = digitalio.DigitalInOut(board.GP22)
+amp_en.direction = digitalio.Direction.OUTPUT
+amp_en.value = False
+
+# =========================================================
+# Mac mini button -> GP21 to GND (active LOW)
+# =========================================================
+reset_btn = digitalio.DigitalInOut(board.GP21)
+reset_btn.direction = digitalio.Direction.INPUT
+reset_btn.pull = digitalio.Pull.UP
+
+def start_pressed():
+    return not reset_btn.value
+
+# =========================================================
+# SD Card (SPI)  SCK=GP2 MOSI=GP3 MISO=GP4 CS=GP5
+# =========================================================
+spi = busio.SPI(board.GP2, MOSI=board.GP3, MISO=board.GP4)
+sd = sdcardio.SDCard(spi, board.GP5)
+storage.mount(storage.VfsFat(sd), "/sd")
+
+# =========================================================
+# Audio (I2S) DATA=GP9 BCLK=GP10 LRC=GP11
+# =========================================================
+audio = audiobusio.I2SOut(
+    bit_clock=board.GP10,
+    word_select=board.GP11,
+    data=board.GP9
+)
+
+# =========================================================
+# Touch pads
+# Touch1 plays StartUp.wav; Touch4=GP16; Touch5=GP17
+# =========================================================
+TOUCH_MAP = [
+    (board.GP6,  f"{SOUNDS_DIR}/StartUp.wav", "StartUp"),
+    (board.GP7,  f"{SOUNDS_DIR}/Tip2.wav",    "Tip2"),
+    (board.GP8,  f"{SOUNDS_DIR}/Tip3.wav",    "Tip3"),
+    (board.GP16, f"{SOUNDS_DIR}/Tip4.wav",    "Tip4"),
+    (board.GP17, f"{SOUNDS_DIR}/Tip5.wav",    "Tip5"),
+]
+
+touch_inputs = []
+for pin, _, _ in TOUCH_MAP:
+    t = digitalio.DigitalInOut(pin)
+    t.direction = digitalio.Direction.INPUT
+    t.pull = digitalio.Pull.DOWN
+    touch_inputs.append(t)
+
+last_touch = [False] * len(touch_inputs)
+
+# =========================================================
+# State
+# =========================================================
+last_activity = time.monotonic()
+sleeping = False
+armed = False  # touch pads disabled until Start is pressed
+
+# =========================================================
+# Audio helpers
+# =========================================================
+def play_wav(path, label, allow_start_interrupt=True):
+    global last_activity
+    last_activity = time.monotonic()
+
+    if audio.playing:
+        audio.stop()
+        time.sleep(0.05)
+
+    lcd_playing(label)
+
+    amp_en.value = True
+    time.sleep(0.15)
+
+    try:
+        with open(path, "rb") as f:
+            wav = audiocore.WaveFile(f)
+            audio.play(wav)
+            while audio.playing:
+                if allow_start_interrupt and start_pressed():
+                    audio.stop()
+                    break
+                time.sleep(0.01)
+    except OSError:
+        amp_en.value = False
+        lcd_missing(path.split("/")[-1])
+        time.sleep(1.2)
+        return
+
+    audio.stop()
+    time.sleep(0.15)
+    amp_en.value = False
+
+def play_start_button_sound():
+    # Wait for release so the press doesn't interrupt itself
+    while start_pressed():
+        time.sleep(0.01)
+    time.sleep(0.05)
+    play_wav(f"{SOUNDS_DIR}/StartButton.wav", "Start Button", allow_start_interrupt=False)
+
+# =========================================================
+# Sleep / Wake
+# =========================================================
+def go_to_sleep():
+    global sleeping, armed, last_activity
+    armed = False
+    amp_en.value = False
+    lcd_sleeping()
+    time.sleep(SLEEP_MESSAGE_S)
+    lcd_clear()
+    lcd_backlight(False)
+    sleeping = True
+    last_activity = time.monotonic()
+def wake_up():
+    global sleeping, last_activity, armed
+
+    lcd_backlight(True)
+
+    # HARD reset of LCD state (prevents random symbols)
+    lcd_reset()
+
+    sleeping = False
+    last_activity = time.monotonic()
+
+    lcd_boot()
+    play_start_button_sound()
+
+    armed = True
+    lcd_idle_armed()
+
+
+# =========================================================
+# MAIN
+# =========================================================
+lcd_backlight(True)
+lcd_reset()
+lcd_boot()
+lcd_idle_disarmed()
+
+while True:
+    now = time.monotonic()
+
+    # Enter sleep after inactivity
+    if (not sleeping) and ((now - last_activity) > SLEEP_AFTER_S):
+        go_to_sleep()
+
+    # Sleep mode: only Start button wakes
+    if sleeping:
+        if start_pressed():
+            while start_pressed():
+                time.sleep(0.01)
+            wake_up()
+            time.sleep(0.2)
+        time.sleep(0.05)
+        continue
+
+    # Start button while awake: plays StartButton.wav and arms touch pads
+    if start_pressed():
+        last_activity = time.monotonic()
+        play_start_button_sound()
+        armed = True
+        lcd_idle_armed()
+        time.sleep(0.2)
+        continue
+
+    # Touch pads (only when armed)
+    if armed and (not audio.playing):
+        for i, (_, wav_path, label) in enumerate(TOUCH_MAP):
+            current = touch_inputs[i].value
+
+            # edge-trigger: LOW -> HIGH
+            if current and not last_touch[i]:
+                last_activity = time.monotonic()
+                play_wav(wav_path, label, allow_start_interrupt=True)
+                lcd_idle_armed()
+
+                # require release
+                if RELEASE_REQUIRED:
+                    t0 = time.monotonic()
+                    while touch_inputs[i].value:
+                        if time.monotonic() - t0 > 5.0:
+                            break
+                        time.sleep(0.01)
+
+                # cooldown
+                t1 = time.monotonic()
+                while time.monotonic() - t1 < COOLDOWN_S:
+                    time.sleep(0.01)
+
+            last_touch[i] = current
+    else:
+        # Keep last_touch in sync when disarmed, but DO NOT spam LCD (flicker fix)
+        for i in range(len(touch_inputs)):
+            last_touch[i] = touch_inputs[i].value
+
+    time.sleep(0.01)
