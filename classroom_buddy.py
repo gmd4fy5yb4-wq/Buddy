@@ -30,7 +30,10 @@ tft = ST7789(
     dc=24,      # Data/Command - GPIO 24
     backlight=None
 )
-font = ImageFont.load_default()
+try:
+    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 22)
+except OSError:
+    font = ImageFont.load_default()
 serial = i2c(port=1, address=0x3c)
 oled = ssd1306(serial)
 
@@ -348,6 +351,10 @@ def take_photo(filename="photo.jpg"):
     print("Taking photo...")
     picam.capture_file(filename)
     print(f"Photo saved: {filename}")
+    # Show photo on TFT
+    photo = Image.open(filename)
+    photo = photo.resize((320, 240))
+    tft.display(photo)
     return filename
 
 
@@ -456,10 +463,10 @@ def animate_talking(duration=1.0):
 def tft_write_lines(lines, color='white', bg='black'):
     image = Image.new('RGB', (320, 240), color=bg)
     draw = ImageDraw.Draw(image)
-    y = 10
-    for line in lines[:8]:  # Up to 8 lines now
-        draw.text((10, y), line[:40], fill=color, font=font)
-        y += 28
+    y = 8
+    for line in lines[:7]:  # Up to 7 lines with larger font
+        draw.text((10, y), line[:26], fill=color, font=font)
+        y += 32
     tft.display(image)
 
 
@@ -647,13 +654,13 @@ Additional guidelines for vision:
             words = response.split()
             lines = [""]
             for word in words:
-                if len(lines[-1]) + len(word) + 1 <= 40:
+                if len(lines[-1]) + len(word) + 1 <= 26:
                     lines[-1] += (" " if lines[-1] else "") + word
                 else:
                     lines.append(word)
 
-            for i in range(0, len(lines), 7):
-                chunk = lines[i:i + 7]
+            for i in range(0, len(lines), 6):
+                chunk = lines[i:i + 6]
                 tft_write_lines(["Response:"] + chunk)
                 animate_talking(duration=4.0)
 
