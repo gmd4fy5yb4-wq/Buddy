@@ -53,7 +53,7 @@ BUTTON_PIN = 17
 GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 # Setup piezo
-BUZZER_PIN = 23
+BUZZER_PIN = 13
 GPIO.setup(BUZZER_PIN, GPIO.OUT)
 buzzer = GPIO.PWM(BUZZER_PIN, 440)
 
