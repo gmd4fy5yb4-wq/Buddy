@@ -226,6 +226,40 @@ def check_voice_command(text):
             time.sleep(3)
         return True
 
+    if "go to sleep" in t or "sleep mode" in t:
+        print("COMMAND: Sleep mode")
+        beep_sleepy()
+        draw_sleepy_face()
+        tft_write_lines([
+            f"Goodnight,",
+            f"{user_name}!",
+            "",
+            "Press button",
+            "to wake me up"
+        ])
+        time.sleep(2)
+        # Turn off TFT (black screen)
+        tft.display(Image.new('RGB', (320, 240), 'black'))
+        oled.hide()
+        # Wait for button press to wake up
+        while GPIO.input(BUTTON_PIN) == GPIO.HIGH:
+            time.sleep(0.1)
+        # Debounce - wait for release
+        while GPIO.input(BUTTON_PIN) == GPIO.LOW:
+            time.sleep(0.1)
+        time.sleep(0.2)
+        # Wake up
+        oled.show()
+        beep_startup()
+        draw_idle_face()
+        tft_write_lines([
+            f"Good morning,",
+            f"{user_name}!",
+            "",
+            "Press button!"
+        ])
+        return True
+
     if "personality chill" in t:
         current_personality = 2
         mode = "ADULT" if adult_mode else "KID"
