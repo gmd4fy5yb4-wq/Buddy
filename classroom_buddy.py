@@ -203,6 +203,26 @@ def check_voice_command(text):
         time.sleep(2)
         return True
 
+    if "show" in t and "picture" in t or "show" in t and "photo" in t:
+        if os.path.exists("photo.jpg"):
+            print("COMMAND: Showing last photo")
+            beep_happy()
+            photo = Image.open("photo.jpg")
+            photo = photo.resize((320, 240))
+            tft.display(photo)
+            time.sleep(5)
+        else:
+            print("COMMAND: No photo to show")
+            beep_confused()
+            tft_write_lines([
+                "  No photo yet!",
+                "",
+                "  Long press to",
+                "  take a photo first"
+            ])
+            time.sleep(3)
+        return True
+
     if "personality chill" in t:
         current_personality = 2
         mode = "ADULT" if adult_mode else "KID"
