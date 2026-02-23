@@ -134,12 +134,15 @@ Guidelines:
 # Mode and personality state
 current_personality = 0  # Index into PERSONALITIES
 adult_mode = False
+buddy_name = "Classroom Buddy"
+user_name = "friend"
 
 
 def get_system_prompt():
     """Return the active system prompt based on personality and mode."""
     p = PERSONALITIES[current_personality]
-    return p["adult_prompt"] if adult_mode else p["kid_prompt"]
+    base = p["adult_prompt"] if adult_mode else p["kid_prompt"]
+    return f"{base}\n\nYour name is {buddy_name}. The user's name is {user_name}. Use their name naturally in conversation."
 
 
 def check_voice_command(text):
@@ -338,7 +341,7 @@ def wait_for_button_press():
             draw_sleepy_face()
             beep_sleepy()
             tft_write_lines([
-                "Classroom Buddy",
+                f"{buddy_name}",
                 "Zzz...",
                 "(press button)"
             ])
@@ -347,7 +350,7 @@ def wait_for_button_press():
             time.sleep(3)
             draw_idle_face()
             tft_write_lines([
-                "Classroom Buddy",
+                f"{buddy_name}",
                 "",
                 "Press button!"
             ])
@@ -516,17 +519,80 @@ def record_audio(duration=5, sample_rate=16000):
 
 # Main Loop
 def main():
-    global last_interaction_time, conversation_history
+    global last_interaction_time, conversation_history, buddy_name, user_name
 
     print("Classroom Buddy starting up!")
 
     draw_idle_face()
     beep_startup()
+
+    # Ask user to name the buddy
     tft_write_lines([
-        "Classroom Buddy",
+        "Hi there!",
+        "What would you",
+        "like to call me?",
+        "",
+        "Press button to talk"
+    ])
+    beep_listening()
+
+    # Wait for button press to record buddy name
+    while GPIO.input(BUTTON_PIN) == GPIO.HIGH:
+        time.sleep(0.1)
+    while GPIO.input(BUTTON_PIN) == GPIO.LOW:
+        time.sleep(0.1)
+    time.sleep(0.2)
+
+    draw_listening_face()
+    beep_listening()
+    tft_write_lines(["Listening..."])
+    audio, sample_rate = record_audio(duration=4)
+    wav.write("question.wav", sample_rate, audio)
+    tft_write_lines(["Thinking..."])
+    name_text = transcribe_audio("question.wav").strip()
+    name_text = name_text.rstrip('.!?,')
+    if name_text:
+        buddy_name = name_text
+    print(f"Buddy name set to: {buddy_name}")
+    beep_happy()
+
+    # Ask user for their name
+    draw_idle_face()
+    tft_write_lines([
+        f"I'm {buddy_name}!",
+        "",
+        "What's your name?",
+        "",
+        "Press button to talk"
+    ])
+
+    while GPIO.input(BUTTON_PIN) == GPIO.HIGH:
+        time.sleep(0.1)
+    while GPIO.input(BUTTON_PIN) == GPIO.LOW:
+        time.sleep(0.1)
+    time.sleep(0.2)
+
+    draw_listening_face()
+    beep_listening()
+    tft_write_lines(["Listening..."])
+    audio, sample_rate = record_audio(duration=4)
+    wav.write("question.wav", sample_rate, audio)
+    tft_write_lines(["Thinking..."])
+    name_text = transcribe_audio("question.wav").strip()
+    name_text = name_text.rstrip('.!?,')
+    if name_text:
+        user_name = name_text
+    print(f"User name set to: {user_name}")
+    beep_happy()
+
+    draw_idle_face()
+    tft_write_lines([
+        f"Nice to meet you,",
+        f"{user_name}!",
         "",
         "Press button!"
     ])
+    time.sleep(2)
 
     last_interaction_time = time.time()
 
@@ -542,7 +608,7 @@ def main():
                 print("Long press - VISION mode")
                 draw_camera_face()
                 tft_write_lines([
-                    "Classroom Buddy",
+                    f"{buddy_name}",
                     "",
                     "Taking photo..."
                 ])
@@ -557,7 +623,7 @@ def main():
             draw_listening_face()
             beep_listening()
             tft_write_lines([
-                "Classroom Buddy",
+                f"{buddy_name}",
                 "",
                 "Listening..."
             ])
@@ -569,7 +635,7 @@ def main():
             draw_thinking_face()
             beep_thinking()
             tft_write_lines([
-                "Classroom Buddy",
+                f"{buddy_name}",
                 "",
                 "Thinking..."
             ])
@@ -580,7 +646,7 @@ def main():
 
             if not question:
                 tft_write_lines([
-                    "Classroom Buddy",
+                    f"{buddy_name}",
                     "",
                     "Didn't hear you!"
                 ])
@@ -595,7 +661,7 @@ def main():
             if check_voice_command(question):
                 draw_idle_face()
                 tft_write_lines([
-                    "Classroom Buddy",
+                    f"{buddy_name}",
                     "",
                     "Press button!"
                 ])
@@ -686,7 +752,7 @@ Additional guidelines for vision:
             draw_idle_face()
             beep_happy()
             tft_write_lines([
-                "Classroom Buddy",
+                f"{buddy_name}",
                 "",
                 "Press button!"
             ])
