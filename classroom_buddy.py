@@ -31,7 +31,7 @@ tft = ST7789(
     backlight=None
 )
 try:
-    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 22)
+    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 26)
 except OSError:
     font = ImageFont.load_default()
 serial = i2c(port=1, address=0x3c)
@@ -483,10 +483,16 @@ def animate_talking(duration=1.0):
 def tft_write_lines(lines, color='white', bg='black'):
     image = Image.new('RGB', (320, 240), color=bg)
     draw = ImageDraw.Draw(image)
-    y = 8
-    for line in lines[:7]:  # Up to 7 lines with larger font
-        draw.text((10, y), line[:26], fill=color, font=font)
-        y += 32
+    display_lines = lines[:6]
+    line_height = 38
+    total_height = len(display_lines) * line_height
+    y = (240 - total_height) // 2
+    for line in display_lines:
+        bbox = draw.textbbox((0, 0), line[:22], font=font)
+        text_width = bbox[2] - bbox[0]
+        x = (320 - text_width) // 2
+        draw.text((x, y), line[:22], fill=color, font=font)
+        y += line_height
     tft.display(image)
 
 
@@ -674,13 +680,13 @@ Additional guidelines for vision:
             words = response.split()
             lines = [""]
             for word in words:
-                if len(lines[-1]) + len(word) + 1 <= 26:
+                if len(lines[-1]) + len(word) + 1 <= 22:
                     lines[-1] += (" " if lines[-1] else "") + word
                 else:
                     lines.append(word)
 
-            for i in range(0, len(lines), 6):
-                chunk = lines[i:i + 6]
+            for i in range(0, len(lines), 5):
+                chunk = lines[i:i + 5]
                 tft_write_lines(["Response:"] + chunk)
                 animate_talking(duration=4.0)
 
