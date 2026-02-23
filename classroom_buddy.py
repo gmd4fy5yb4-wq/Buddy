@@ -153,9 +153,9 @@ def check_voice_command(text):
         print(f"COMMAND: Adult mode ON ({p_name})")
         beep_happy()
         tft_write_lines([
-            "  Mode Changed!",
-            "  ADULT MODE: ON",
-            f"  {p_name}",
+            "Mode Changed!",
+            "ADULT MODE: ON",
+            f"{p_name}",
             ""
         ])
         time.sleep(2)
@@ -167,9 +167,9 @@ def check_voice_command(text):
         print(f"COMMAND: Kid mode ON ({p_name})")
         beep_happy()
         tft_write_lines([
-            "  Mode Changed!",
-            "  KID MODE: ON",
-            f"  {p_name}",
+            "Mode Changed!",
+            "KID MODE: ON",
+            f"{p_name}",
             ""
         ])
         time.sleep(2)
@@ -181,9 +181,9 @@ def check_voice_command(text):
         print(f"COMMAND: Personality -> Friendly Teacher ({mode})")
         beep_happy()
         tft_write_lines([
-            "  Personality:",
-            "  Friendly Teacher",
-            f"  Mode: {mode}",
+            "Personality:",
+            "Friendly Teacher",
+            f"Mode: {mode}",
             ""
         ])
         time.sleep(2)
@@ -195,9 +195,9 @@ def check_voice_command(text):
         print(f"COMMAND: Personality -> Sarcastic Comedian ({mode})")
         beep_happy()
         tft_write_lines([
-            "  Personality:",
-            "  Sarcastic Comedian",
-            f"  Mode: {mode}",
+            "Personality:",
+            "Sarcastic Comedian",
+            f"Mode: {mode}",
             ""
         ])
         time.sleep(2)
@@ -215,10 +215,10 @@ def check_voice_command(text):
             print("COMMAND: No photo to show")
             beep_confused()
             tft_write_lines([
-                "  No photo yet!",
+                "No photo yet!",
                 "",
-                "  Long press to",
-                "  take a photo first"
+                "Long press to",
+                "take a photo first"
             ])
             time.sleep(3)
         return True
@@ -229,9 +229,9 @@ def check_voice_command(text):
         print(f"COMMAND: Personality -> Chill Tutor ({mode})")
         beep_happy()
         tft_write_lines([
-            "  Personality:",
-            "  Chill Tutor",
-            f"  Mode: {mode}",
+            "Personality:",
+            "Chill Tutor",
+            f"Mode: {mode}",
             ""
         ])
         time.sleep(2)
@@ -338,18 +338,16 @@ def wait_for_button_press():
             draw_sleepy_face()
             beep_sleepy()
             tft_write_lines([
-                "  Classroom Buddy",
-                "      -_-",
-                "       Zzz...",
-                "  (press button)"
+                "Classroom Buddy",
+                "Zzz...",
+                "(press button)"
             ])
             reset_conversation()
             sleepy_shown = True
             time.sleep(3)
             draw_idle_face()
             tft_write_lines([
-                "  Classroom Buddy",
-                "      ^_^",
+                "Classroom Buddy",
                 "",
                 "Press button!"
             ])
@@ -525,8 +523,7 @@ def main():
     draw_idle_face()
     beep_startup()
     tft_write_lines([
-        "  Classroom Buddy",
-        "      ^_^",
+        "Classroom Buddy",
         "",
         "Press button!"
     ])
@@ -545,10 +542,9 @@ def main():
                 print("Long press - VISION mode")
                 draw_camera_face()
                 tft_write_lines([
-                    "  Classroom Buddy",
-                    "     [O_O]",
+                    "Classroom Buddy",
                     "",
-                    "  Taking photo..."
+                    "Taking photo..."
                 ])
                 time.sleep(0.5)
                 beep_photo()
@@ -561,10 +557,9 @@ def main():
             draw_listening_face()
             beep_listening()
             tft_write_lines([
-                "  Classroom Buddy",
-                "     (o.o)",
+                "Classroom Buddy",
                 "",
-                "   Listening..."
+                "Listening..."
             ])
 
             audio, sample_rate = record_audio(duration=5)
@@ -574,10 +569,9 @@ def main():
             draw_thinking_face()
             beep_thinking()
             tft_write_lines([
-                "  Classroom Buddy",
-                "     (@_@)",
+                "Classroom Buddy",
                 "",
-                "   Thinking..."
+                "Thinking..."
             ])
 
             print("Transcribing...")
@@ -586,10 +580,9 @@ def main():
 
             if not question:
                 tft_write_lines([
-                    "  Classroom Buddy",
-                    "     (o.o)?",
+                    "Classroom Buddy",
                     "",
-                    " Didn't hear you!"
+                    "Didn't hear you!"
                 ])
                 draw_confused_face()
                 beep_confused()
@@ -602,8 +595,7 @@ def main():
             if check_voice_command(question):
                 draw_idle_face()
                 tft_write_lines([
-                    "  Classroom Buddy",
-                    "      ^_^",
+                    "Classroom Buddy",
                     "",
                     "Press button!"
                 ])
@@ -694,8 +686,7 @@ Additional guidelines for vision:
             draw_idle_face()
             beep_happy()
             tft_write_lines([
-                "  Classroom Buddy",
-                "      ^_^",
+                "Classroom Buddy",
                 "",
                 "Press button!"
             ])
@@ -712,10 +703,9 @@ Additional guidelines for vision:
             draw_sad_face()
             beep_sad()
             tft_write_lines([
-                "  Oops!",
-                "  Something went",
-                "  wrong. Try again!",
-                ""
+                "Oops!",
+                "Something went",
+                "wrong. Try again!"
             ])
             time.sleep(3)
             draw_idle_face()
